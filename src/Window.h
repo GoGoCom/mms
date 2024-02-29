@@ -202,6 +202,10 @@ private:
     int mazeWidth();
     int mazeHeight();
 
+    bool FrontWallFront(int x, int y);
+    bool FrontWallRight(int x, int y);
+    bool FrontWallLeft (int x, int y);
+
     bool wallFront(int distance);
     bool wallRight();
     bool wallLeft();

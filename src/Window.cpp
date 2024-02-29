@@ -1156,7 +1156,7 @@ void Window::dispatchCommand(QString command) {
 QString Window::executeCommand(QString command) {
 
     QStringList tokens = command.split(" ", QString::SkipEmptyParts);
-    if (tokens.size() < 1 || tokens.size() > 2) {
+    if (tokens.size() < 1 || tokens.size() > 3) {
         return INVALID;
     }
     QString function = tokens.at(0);
@@ -1164,12 +1164,41 @@ QString Window::executeCommand(QString command) {
             !(function == "moveFullForward" || function == "moveHalfForward" || function == "moveEdgeForward" || function == "getStat")) {
         return INVALID;
     }
-    if (function == "mazeWidth") {
+    if (
+        function == "FrontWallFront" ||
+         function == "FrontWallRight" ||
+            function == "FrontWallLeft"
+    ) {
+        bool ok = true;
+        int x = tokens.at(1).toInt(&ok);
+        int y = tokens.at(2).toInt(&ok);
+        if (!ok) {
+            return "";
+        }
+//        if (tokens.at(3).size() != 1) {
+//            return;
+//        }
+//        QChar direction = tokens.at(3).at(0);
+//        if (!CHAR_TO_DIRECTION().contains(direction)) {
+//            return;
+//        }
+        if (function == "FrontWallFront") {
+            return boolToString(FrontWallFront(x, y));
+        }
+        else if (function == "FrontWallRight") {
+            return boolToString(FrontWallRight(x, y));
+        }
+        else if (function == "FrontWallLeft") {
+            return boolToString(FrontWallLeft(x, y));
+        }
+
+    }
+    else if (function == "mazeWidth") {
         return QString::number(mazeWidth());
     }
     else if (function == "mazeHeight") {
         return QString::number(mazeHeight());
-    }
+    }   
     else if (function == "wallFront") {
         return boolToString(wallFront(0));
     }
@@ -1491,35 +1520,47 @@ void Window::updateMouseProgress(double progress) {
     if (m_movement == Movement::RUN_RIGHT || m_movement == Movement::RUN_LEFT) {
 
         if (m_startingDirection == Direction::NORTH) {
+            destinationLocation.second += 1;
             if (m_movement == Movement::RUN_RIGHT) {
                 currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (1.0 - currentRotation.getSin()) * +1,  Dimensions::halfTileLength()*currentRotation.getCos() * +1 );
+                //destinationLocation.first  += 1;
             }
             else if (m_movement == Movement::RUN_LEFT) {
                 currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (1.0 - currentRotation.getSin()) * -1,  Dimensions::halfTileLength()*currentRotation.getCos() * -1 );
+                //destinationLocation.first  -= 1;
             }
         }
         else if (m_startingDirection == Direction::EAST) {
+            destinationLocation.first  += 1;
             if (m_movement == Movement::RUN_RIGHT) {
                 currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (      currentRotation.getSin()) * -1,  Dimensions::halfTileLength()*(1.0 - currentRotation.getCos()) * -1 );
+                //destinationLocation.second -= 1;
             }
             else if (m_movement == Movement::RUN_LEFT) {
                 currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (      currentRotation.getSin()) * +1,  Dimensions::halfTileLength()*(1.0 - currentRotation.getCos()) * +1);
+                //destinationLocation.second += 1;
             }
         }
         else if (m_startingDirection == Direction::SOUTH) {
+            destinationLocation.second -= 1;
             if (m_movement == Movement::RUN_RIGHT) {
                 currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (1.0 + currentRotation.getSin()) * -1,  Dimensions::halfTileLength()*(      currentRotation.getCos()) * +1 );
+                //destinationLocation.first  -= 1;
             }
             else if (m_movement == Movement::RUN_LEFT) {
                 currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (1.0 + currentRotation.getSin()) * +1,  Dimensions::halfTileLength()*(      currentRotation.getCos()) * -1);
+                //destinationLocation.first  += 1;
             }
         }
         else if (m_startingDirection == Direction::WEST) {
+            destinationLocation.first  -= 1;
             if (m_movement == Movement::RUN_RIGHT) {
                 currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (      currentRotation.getSin()) * -1,  Dimensions::halfTileLength()*(1.0 + currentRotation.getCos()) * +1);
+                //destinationLocation.second += 1;
             }
             else if (m_movement == Movement::RUN_LEFT) {
                 currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (      currentRotation.getSin()) * +1,  Dimensions::halfTileLength()*(1.0 + currentRotation.getCos()) * -1);
+                //destinationLocation.second -= 1;
             }
         }else {
             stopRun("Stop running because of a wrong direction!");
@@ -1612,6 +1653,26 @@ int Window::mazeHeight() {
     return m_maze->getHeight();
 }
 
+bool Window::FrontWallFront(int x, int y) {
+     Direction direction = m_mouse->getCurrentDiscretizedRotation();
+ //m_runOutput->appendPlainText(QVariant("FrontWallFront").toString() + QVariant(x).toString() + QVariant(y).toString() );
+    return isWall({x, y, direction});
+}
+
+bool Window::FrontWallRight(int x, int y) {
+    Direction direction =
+        DIRECTION_ROTATE_RIGHT().value(m_mouse->getCurrentDiscretizedRotation());
+
+    return isWall({x, y, direction});
+}
+
+bool Window::FrontWallLeft(int x, int y) {
+    Direction direction =
+        DIRECTION_ROTATE_LEFT().value(m_mouse->getCurrentDiscretizedRotation());
+
+    return isWall({x, y, direction});
+}
+
 bool Window::wallFront(int distance) {
     QPair<int, int> position = m_mouse->getCurrentDiscretizedTranslation();
     Direction direction = m_mouse->getCurrentDiscretizedRotation();
@@ -1630,6 +1691,8 @@ bool Window::wallFront(int distance) {
             break;
         default : break; 
     }
+
+  //  m_runOutput->appendPlainText(QVariant(position.first).toString() + QVariant(position.second).toString() );
     return isWall({position.first, position.second, direction});
 }
 
