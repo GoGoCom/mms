@@ -29,8 +29,11 @@ enum class Movement {
   MOVE_DIAGONAL,
   TURN_RIGHT_45,
   TURN_RIGHT_90,
+  TURN_RIGHT_180,
   TURN_LEFT_45,
   TURN_LEFT_90,
+  RUN_RIGHT,
+  RUN_LEFT ,
   NONE,
 };
 
@@ -177,6 +180,7 @@ class Window : public QMainWindow {
   double m_movementProgress;
   double m_movementStepSize;
   QSlider *m_speedSlider;
+  int    m_sliderValue;
 
   double progressRequired(Movement movement);
   void updateMouseProgress(double progress);
