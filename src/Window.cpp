@@ -727,9 +727,6 @@ void Window::startRun() {
     // Only enabled while mouse is running
     m_pauseButton->setEnabled(true);
     m_resetButton->setEnabled(true);
-
-    // for mouse speed control
-    m_sliderValue = m_speedSlider->value();
   } else {
     // Clean up the failed process
     m_runOutput->appendPlainText(process->errorString());
@@ -1122,19 +1119,10 @@ QString Window::executeCommand(QString command) {
     }
     bool success = moveForward(numHalfSteps);
     return success ? "" : CRASH;
-  } else if (function == "runRight" ) {
-      turn(Movement::RUN_RIGHT);
-      return "";
-  } else if (function == "runLeft" ) {
-      turn(Movement::RUN_LEFT);
-      return "";
-  } else if (function == "turnBack" ) {
-      turn(Movement::TURN_RIGHT_180);
-      return "";
-  } else if (function == "turnRight" || function == "turnRight90" ) {
+  } else if (function == "turnRight" || function == "turnRight90") {
     turn(Movement::TURN_RIGHT_90);
     return "";
-  } else if (function == "turnLeft"  || function == "turnLeft90"  ) {
+  } else if (function == "turnLeft" || function == "turnLeft90") {
     turn(Movement::TURN_LEFT_90);
     return "";
   } else if (function == "turnRight45") {
@@ -1233,18 +1221,12 @@ double Window::progressRequired(Movement movement) {
     case Movement::TURN_RIGHT_45:
     case Movement::TURN_LEFT_45:
       return 16.66;
-    case Movement::TURN_RIGHT_180:
     case Movement::TURN_RIGHT_90:
     case Movement::TURN_LEFT_90:
       return 33.33;
-    case Movement::RUN_RIGHT:
-    case Movement::RUN_LEFT:
-      return 33.33 * 1.5;
     default:
       ASSERT_NEVER_RUNS();
   }
-
-  return 0.0;
 }
 
 void Window::updateMouseProgress(double progress) {
@@ -1291,12 +1273,6 @@ void Window::updateMouseProgress(double progress) {
     destinationRotation -= Angle::Degrees(90);
   } else if (m_movement == Movement::TURN_LEFT_90) {
     destinationRotation += Angle::Degrees(90);
-  } else if (m_movement == Movement::TURN_RIGHT_180) {
-      destinationRotation -= Angle::Degrees(180);
-  } else if (m_movement == Movement::RUN_RIGHT) {
-      destinationRotation -= Angle::Degrees(90);
-  } else if (m_movement == Movement::RUN_LEFT) {
-      destinationRotation += Angle::Degrees(90);
   } else {
     ASSERT_NEVER_RUNS();
   }
@@ -1311,65 +1287,15 @@ void Window::updateMouseProgress(double progress) {
   double fraction = 1.0 - (remaining / required);
 
   // Calculate the current translation and rotation
-  Coordinate startingTranslation    = getCoordinate(m_startingPosition);
+  Coordinate startingTranslation = getCoordinate(m_startingPosition);
   Coordinate destinationTranslation = getCoordinate(destinationLocation);
-  Angle      startingRotation       = DIRECTION_TO_ANGLE().value(m_startingDirection);
 
-  Coordinate currentTranslation = startingTranslation * (1.0 - fraction) + destinationTranslation * fraction;
-  Angle currentRotation         = startingRotation    * (1.0 - fraction) + destinationRotation    * fraction;
+  Angle startingRotation = DIRECTION_TO_ANGLE().value(m_startingDirection);
+  Coordinate currentTranslation = startingTranslation * (1.0 - fraction) +
+                                  destinationTranslation * fraction;
+  Angle currentRotation =
+      startingRotation * (1.0 - fraction) + destinationRotation * fraction;
 
-  // Calculate the current translation and rotation for a curv turn
-  if (m_movement == Movement::RUN_RIGHT || m_movement == Movement::RUN_LEFT) {
-     //-   m_runOutput->appendPlainText("run test");
-      if (m_startingDirection == SemiDirection::NORTH) {
-          destinationLocation.y += 1;
-          if (m_movement == Movement::RUN_RIGHT) {
-              currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (1.0 - currentRotation.getSin()) * +1,  Dimensions::halfTileLength()*currentRotation.getCos() * +1 );
-              //destinationLocation.first  += 1;
-          }
-          else if (m_movement == Movement::RUN_LEFT) {
-              currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (1.0 - currentRotation.getSin()) * -1,  Dimensions::halfTileLength()*currentRotation.getCos() * -1 );
-              //destinationLocation.first  -= 1;
-          }
-      }
-      else if (m_startingDirection == SemiDirection::EAST) {
-          destinationLocation.x  += 1;
-          if (m_movement == Movement::RUN_RIGHT) {
-              currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (      currentRotation.getSin()) * -1,  Dimensions::halfTileLength()*(1.0 - currentRotation.getCos()) * -1 );
-              //destinationLocation.second -= 1;
-          }
-          else if (m_movement == Movement::RUN_LEFT) {
-              currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (      currentRotation.getSin()) * +1,  Dimensions::halfTileLength()*(1.0 - currentRotation.getCos()) * +1);
-              //destinationLocation.second += 1;
-          }
-      }
-      else if (m_startingDirection == SemiDirection::SOUTH) {
-          destinationLocation.y -= 1;
-          if (m_movement == Movement::RUN_RIGHT) {
-              currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (1.0 + currentRotation.getSin()) * -1,  Dimensions::halfTileLength()*(      currentRotation.getCos()) * +1 );
-              //destinationLocation.first  -= 1;
-          }
-          else if (m_movement == Movement::RUN_LEFT) {
-              currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (1.0 + currentRotation.getSin()) * +1,  Dimensions::halfTileLength()*(      currentRotation.getCos()) * -1);
-              //destinationLocation.first  += 1;
-          }
-      }
-      else if (m_startingDirection == SemiDirection::WEST) {
-          destinationLocation.x  -= 1;
-          if (m_movement == Movement::RUN_RIGHT) {
-              currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (      currentRotation.getSin()) * -1,  Dimensions::halfTileLength()*(1.0 + currentRotation.getCos()) * +1);
-              //destinationLocation.second += 1;
-          }
-          else if (m_movement == Movement::RUN_LEFT) {
-              currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * (      currentRotation.getSin()) * +1,  Dimensions::halfTileLength()*(1.0 + currentRotation.getCos()) * -1);
-              //destinationLocation.second -= 1;
-          }
-      }else {
-        //  stopRun("Stop running because of a wrong direction!");
-          return;
-      }
-
-  }
   // Teleport the mouse, reset movement state if done
   m_mouse->teleport(currentTranslation, currentRotation);
   if (remaining == 0.0) {
@@ -1527,25 +1453,6 @@ bool Window::moveForward(int numHalfSteps) {
     stats->startRun();
   }
   // TODO: upforgrabs
-  // increase the speed by the distance that will be travelled
-    switch(numHalfSteps) {
-  case 1:
-  case 2:
-      m_speedSlider->setValue(m_sliderValue);
-      break;
-  case 3 :
-  case 4 :
-      m_speedSlider->setValue(m_sliderValue*1.25);
-      break;
-  case 5:
-  case 6:
-      m_speedSlider->setValue(m_sliderValue*1.5);
-      break;
-  default :
-      m_speedSlider->setValue(m_sliderValue*2.0);
-      break;
-  }
-  // TODO: upforgrabs
   // Half steps shouldn't count as a full move
   // increase the stats by the distance that will be travelled
   stats->addDistance(numHalfSteps);
@@ -1555,13 +1462,10 @@ bool Window::moveForward(int numHalfSteps) {
 }
 
 void Window::turn(Movement movement) {
-  ASSERT_TR(movement == Movement::RUN_LEFT  ||
-            movement == Movement::RUN_RIGHT ||
-            movement == Movement::TURN_LEFT_45 ||
+  ASSERT_TR(movement == Movement::TURN_LEFT_45 ||
             movement == Movement::TURN_LEFT_90 ||
             movement == Movement::TURN_RIGHT_45 ||
-            movement == Movement::TURN_RIGHT_90 ||
-            movement == Movement::TURN_RIGHT_180  );
+            movement == Movement::TURN_RIGHT_90);
 
   m_movement = movement;
   // TODO: upforgrabs
@@ -1774,7 +1678,6 @@ bool Window::isWall(SemiPosition semiPos, SemiDirection semiDir) const {
   } else {
     ASSERT_NEVER_RUNS();
   }
-  return false;
 }
 
 bool Window::isWall(SemiPosition semiPos, SemiDirection semiDir,
@@ -1784,9 +1687,8 @@ bool Window::isWall(SemiPosition semiPos, SemiDirection semiDir,
   if (isWall(semiPos, semiDir)) {
     return true;
   }
- // m_runOutput->appendPlainText( QVariant(semiPos.x).toString() + " , " + QVariant(semiPos.y).toString() );
   for (int i = 1; i <= halfStepsAhead; i += 1) {
-    switch (m_mouse->getCurrentDiscretizedRotation()) {
+    switch (semiDir) {
       case SemiDirection::NORTH:
         semiPos.y += 1;
         break;
@@ -1818,10 +1720,9 @@ bool Window::isWall(SemiPosition semiPos, SemiDirection semiDir,
       default:
         ASSERT_NEVER_RUNS();
     }
-  }
-  //m_runOutput->appendPlainText( QVariant(halfStepsAhead).toString() + "-(" + QVariant(semiPos.x).toString() + " , " + QVariant(semiPos.y).toString() + "):" +QVariant( (int) semiDir ).toString() );
-  if (isWall(semiPos, semiDir)) {
+    if (isWall(semiPos, semiDir)) {
       return true;
+    }
   }
   return false;
 }
