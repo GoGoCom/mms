@@ -32,8 +32,8 @@ enum class Movement {
   TURN_RIGHT_180,
   TURN_LEFT_45,
   TURN_LEFT_90,
-  RUN_RIGHT,
-  RUN_LEFT ,
+  CURVE_TURN_RIGHT,
+  CURVE_TURN_LEFT,
   NONE,
 };
 
@@ -180,12 +180,12 @@ class Window : public QMainWindow {
   double m_movementProgress;
   double m_movementStepSize;
   QSlider *m_speedSlider;
-  int    m_sliderValue;
 
   double progressRequired(Movement movement);
   void updateMouseProgress(double progress);
   void scheduleMouseProgressUpdate();
   bool isMoving();
+
 
   // ----- Scoreboard -----
   Stats *stats;
@@ -237,6 +237,8 @@ class Window : public QMainWindow {
   bool isWithinMaze(int x, int y) const;
   Wall getOpposingWall(Wall wall) const;
   Coordinate getCoordinate(SemiPosition semiPos) const;
+  void curveTurns(SemiPosition *destinationLocation, Coordinate *currentTranslation, Angle currentRotation);
+
 };
 
 }  // namespace mms

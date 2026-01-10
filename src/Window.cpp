@@ -1119,7 +1119,16 @@ QString Window::executeCommand(QString command) {
     }
     bool success = moveForward(numHalfSteps);
     return success ? "" : CRASH;
-  } else if (function == "turnRight" || function == "turnRight90") {
+  } else if (function == "curveTurnRight" ) {
+      turn(Movement::CURVE_TURN_RIGHT);
+      return "";
+  } else if (function == "curveTurnLeft" ) {
+      turn(Movement::CURVE_TURN_LEFT);
+      return "";
+  } else if (function == "turnBack" ) {
+      turn(Movement::TURN_RIGHT_180);
+      return "";
+  }  if (function == "turnRight" || function == "turnRight90") {
     turn(Movement::TURN_RIGHT_90);
     return "";
   } else if (function == "turnLeft" || function == "turnLeft90") {
@@ -1221,9 +1230,13 @@ double Window::progressRequired(Movement movement) {
     case Movement::TURN_RIGHT_45:
     case Movement::TURN_LEFT_45:
       return 16.66;
+    case Movement::TURN_RIGHT_180:
     case Movement::TURN_RIGHT_90:
     case Movement::TURN_LEFT_90:
       return 33.33;
+    case Movement::CURVE_TURN_RIGHT:
+    case Movement::CURVE_TURN_LEFT:
+        return 33.33 * 1.5;
     default:
       ASSERT_NEVER_RUNS();
   }
@@ -1273,6 +1286,12 @@ void Window::updateMouseProgress(double progress) {
     destinationRotation -= Angle::Degrees(90);
   } else if (m_movement == Movement::TURN_LEFT_90) {
     destinationRotation += Angle::Degrees(90);
+  } else if (m_movement == Movement::TURN_RIGHT_180) {
+      destinationRotation -= Angle::Degrees(180);
+  } else if (m_movement == Movement::CURVE_TURN_RIGHT) {
+      destinationRotation -= Angle::Degrees(90);
+  } else if (m_movement == Movement::CURVE_TURN_LEFT) {
+      destinationRotation += Angle::Degrees(90);
   } else {
     ASSERT_NEVER_RUNS();
   }
@@ -1295,6 +1314,8 @@ void Window::updateMouseProgress(double progress) {
                                   destinationTranslation * fraction;
   Angle currentRotation =
       startingRotation * (1.0 - fraction) + destinationRotation * fraction;
+
+  curveTurns(&destinationLocation, &currentTranslation, currentRotation);
 
   // Teleport the mouse, reset movement state if done
   m_mouse->teleport(currentTranslation, currentRotation);
@@ -1341,6 +1362,48 @@ void Window::scheduleMouseProgressUpdate() {
   // Update step size, set the timer
   m_movementStepSize = progressRemaining;
   m_commandQueueTimer->start(secondsRemaining * 1000);
+}
+
+
+void Window::curveTurns(SemiPosition *destinationLocation, Coordinate *currentTranslation, Angle currentRotation) {
+
+// Calculate for the curve turning
+ if (   m_movement == Movement::CURVE_TURN_RIGHT || m_movement == Movement::CURVE_TURN_LEFT) {
+
+    double sinValue = currentRotation.getSin(), cosValue = currentRotation.getCos();
+    double xValue = 0.0, yValue = 0.0;
+
+      if (m_startingDirection == SemiDirection::NORTH) {
+          destinationLocation->y += 1;
+          xValue = 1.0 - sinValue, yValue =       cosValue;
+          if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= +1, yValue *= +1;
+          else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= -1, yValue *= -1;
+      }
+      else if (m_startingDirection == SemiDirection::EAST) {
+          destinationLocation->x  += 1;
+          xValue =       sinValue, yValue = 1.0 - cosValue;
+          if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= -1, yValue *= -1;
+          else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= +1, yValue *= +1;
+      }
+      else if (m_startingDirection == SemiDirection::SOUTH) {
+          destinationLocation->y -= 1;
+          xValue = 1.0 + sinValue, yValue =       cosValue;
+          if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= -1, yValue *= +1;
+          else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= +1, yValue *= -1;
+      }
+      else if (m_startingDirection == SemiDirection::WEST) {
+          destinationLocation->x  -= 1;
+          xValue =       sinValue, yValue = 1.0 + cosValue;
+          if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= -1, yValue *= +1;
+          else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= +1, yValue *= -1;
+      } else {
+        // Stop running because of a wrong direction
+          ASSERT_NEVER_RUNS();
+          return;
+      }
+      *currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * xValue,  Dimensions::halfTileLength() * yValue );
+  }
+
 }
 
 bool Window::isMoving() { return m_movement != Movement::NONE; }
@@ -1462,11 +1525,13 @@ bool Window::moveForward(int numHalfSteps) {
 }
 
 void Window::turn(Movement movement) {
-  ASSERT_TR(movement == Movement::TURN_LEFT_45 ||
-            movement == Movement::TURN_LEFT_90 ||
+  ASSERT_TR(movement == Movement::CURVE_TURN_LEFT ||
+            movement == Movement::CURVE_TURN_RIGHT ||
+            movement == Movement::TURN_LEFT_45  ||
+            movement == Movement::TURN_LEFT_90  ||
             movement == Movement::TURN_RIGHT_45 ||
-            movement == Movement::TURN_RIGHT_90);
-
+            movement == Movement::TURN_RIGHT_90 ||
+            movement == Movement::TURN_RIGHT_180  );
   m_movement = movement;
   // TODO: upforgrabs
   // Setting these member variables should be unnecessary here

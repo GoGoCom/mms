@@ -117,6 +117,8 @@ void turnRight();
 void turnLeft();
 void turnRight45();
 void turnLeft45();
+void curveTurnRight();
+void curveTurnLeft();
 
 void setWall(int x, int y, char direction);
 void clearWall(int x, int y, char direction);
@@ -203,6 +205,16 @@ int/float getStat(string stat);
 #### `turnLeft45`
 * **Args:** None
 * **Action:** Turn the robot forty-five degrees to the left
+* **Response:** `ack` once the movement completes
+
+#### `curveTurnRight`
+* **Args:** None
+* **Action:** Round turn the robot ninty degrees to the right
+* **Response:** `ack` once the movement completes
+
+#### `curveTurnLeft`
+* **Args:** None
+* **Action:** Round Turn the robot ninty degrees to the left
 * **Response:** `ack` once the movement completes
 
 #### `setWall X Y D`
