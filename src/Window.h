@@ -181,6 +181,7 @@ class Window : public QMainWindow {
   double m_movementStepSize;
   QSlider *m_speedSlider;
 
+  int    m_sliderValue; // mouse speed slide value
   double progressRequired(Movement movement);
   void updateMouseProgress(double progress);
   void scheduleMouseProgressUpdate();

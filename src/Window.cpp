@@ -727,6 +727,9 @@ void Window::startRun() {
     // Only enabled while mouse is running
     m_pauseButton->setEnabled(true);
     m_resetButton->setEnabled(true);
+
+    // for mouse speed control
+    m_sliderValue = m_speedSlider->value();
   } else {
     // Clean up the failed process
     m_runOutput->appendPlainText(process->errorString());
@@ -740,6 +743,8 @@ void Window::startRun() {
 void Window::cancelRun() {
   cancelProcess(m_runProcess, m_runStatus);
   removeMouseFromMaze();
+  // recover mouse speed
+  m_speedSlider->setValue(SPEED_SLIDER_DEFAULT);
 }
 
 void Window::onRunExit(int exitCode, QProcess::ExitStatus exitStatus) {
@@ -861,6 +866,7 @@ QStringList Window::processText(QString text, QStringList *buffer) {
 bool Window::dispatchCommand(QString command) {
   // For performance reasons, handle no-response commands inline (don't queue
   // them with the commands that elicit a response, just perform the action)
+
   if (command.startsWith("setWall") || command.startsWith("clearWall")) {
     QStringList tokens = command.split(" ", Qt::SkipEmptyParts);
     if (tokens.size() != 4) {
@@ -1368,43 +1374,45 @@ void Window::scheduleMouseProgressUpdate() {
 void Window::curveTurns(SemiPosition *destinationLocation, Coordinate *currentTranslation, Angle currentRotation) {
 
 // Calculate for the curve turning
- if (   m_movement == Movement::CURVE_TURN_RIGHT || m_movement == Movement::CURVE_TURN_LEFT) {
+    if (   m_movement == Movement::CURVE_TURN_RIGHT || m_movement == Movement::CURVE_TURN_LEFT) {
 
-    double sinValue = currentRotation.getSin(), cosValue = currentRotation.getCos();
-    double xValue = 0.0, yValue = 0.0;
+        double sinValue = currentRotation.getSin(), cosValue = currentRotation.getCos();
+        double xValue = 0.0, yValue = 0.0;
 
-      if (m_startingDirection == SemiDirection::NORTH) {
-          destinationLocation->y += 1;
-          xValue = 1.0 - sinValue, yValue =       cosValue;
-          if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= +1, yValue *= +1;
-          else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= -1, yValue *= -1;
-      }
-      else if (m_startingDirection == SemiDirection::EAST) {
-          destinationLocation->x  += 1;
-          xValue =       sinValue, yValue = 1.0 - cosValue;
-          if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= -1, yValue *= -1;
-          else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= +1, yValue *= +1;
-      }
-      else if (m_startingDirection == SemiDirection::SOUTH) {
-          destinationLocation->y -= 1;
-          xValue = 1.0 + sinValue, yValue =       cosValue;
-          if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= -1, yValue *= +1;
-          else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= +1, yValue *= -1;
-      }
-      else if (m_startingDirection == SemiDirection::WEST) {
-          destinationLocation->x  -= 1;
-          xValue =       sinValue, yValue = 1.0 + cosValue;
-          if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= -1, yValue *= +1;
-          else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= +1, yValue *= -1;
-      } else {
-        // Stop running because of a wrong direction
-          ASSERT_NEVER_RUNS();
-          return;
-      }
-      *currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * xValue,  Dimensions::halfTileLength() * yValue );
-  }
+        if (m_startingDirection == SemiDirection::NORTH) {
+            destinationLocation->y += 1;
+            xValue = 1.0 - sinValue, yValue =       cosValue;
+            if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= +1, yValue *= +1;
+            else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= -1, yValue *= -1;
+        }
+        else if (m_startingDirection == SemiDirection::EAST) {
+            destinationLocation->x  += 1;
+            xValue =       sinValue, yValue = 1.0 - cosValue;
+            if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= -1, yValue *= -1;
+            else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= +1, yValue *= +1;
+        }
+        else if (m_startingDirection == SemiDirection::SOUTH) {
+            destinationLocation->y -= 1;
+            xValue = 1.0 + sinValue, yValue =       cosValue;
+            if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= -1, yValue *= +1;
+            else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= +1, yValue *= -1;
+        }
+        else if (m_startingDirection == SemiDirection::WEST) {
+            destinationLocation->x  -= 1;
+            xValue =       sinValue, yValue = 1.0 + cosValue;
+            if (m_movement == Movement::CURVE_TURN_RIGHT)     xValue *= -1, yValue *= +1;
+            else if (m_movement == Movement::CURVE_TURN_LEFT) xValue *= +1, yValue *= -1;
+        } else {
+            // Stop running because of a wrong direction
+            ASSERT_NEVER_RUNS();
+            return;
+        }
+        *currentTranslation += Coordinate::Cartesian( Dimensions::halfTileLength() * xValue,  Dimensions::halfTileLength() * yValue );
+    }
 
 }
+
+
 
 bool Window::isMoving() { return m_movement != Movement::NONE; }
 
@@ -1515,6 +1523,28 @@ bool Window::moveForward(int numHalfSteps) {
       m_startingPosition.toMazeLocation().second == 0) {
     stats->startRun();
   }
+
+  // TODO: upforgrabs
+  // increase the speed by the distance that will be travelled
+  switch(numHalfSteps) {
+  case 1:
+  case 2:
+      m_speedSlider->setValue(m_sliderValue);
+      break;
+  case 3 :
+  case 4 :
+      m_speedSlider->setValue(m_sliderValue*1.25);
+      break;
+  case 5:
+  case 6:
+      m_speedSlider->setValue(m_sliderValue*1.5);
+      break;
+  default :
+      m_speedSlider->setValue(m_sliderValue*2.0);
+      break;
+  }
+
+
   // TODO: upforgrabs
   // Half steps shouldn't count as a full move
   // increase the stats by the distance that will be travelled
